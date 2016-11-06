@@ -54,16 +54,12 @@ implementation {
   components new AMSenderC(AM_BLINKTORADIO);
   components new AMReceiverC(AM_BLINKTORADIO);
 
-  components new PhotoC();
-  components new VoltageC();   
-  components new SensirionSht11C();
-	
   App.Boot -> MainC;
   App.Leds -> LedsC;
   App.Timer0 -> Timer0;
 
   
-  App.nextSense -> nextSense;//继续下一个数据的传输 HJJ 2013.7.26
+  App.nextSense -> nextSense;
   App.waitforack -> waitforack;
   
   App.Packet -> AMSenderC;
@@ -71,10 +67,4 @@ implementation {
   App.AMControl -> ActiveMessageC; //具体的是初始化什么
   App.AMSend -> AMSenderC;
   App.Receive -> AMReceiverC;
-  //App.SenseTimer->MyTimer;       //橘子改
-  	//下面是装配采集板组件，在节点启动后采集环境的温度、光照...等等
-	App.VoltageRead->VoltageC;                                  //wrc--  20101118
-	App.TempRead->SensirionSht11C.Temperature;
-	App.HumiRead->SensirionSht11C.Humidity;
-	App.LightRead->PhotoC;	
 }
