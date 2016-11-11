@@ -22,7 +22,7 @@ module preambleTestC {
 }
 implementation {
   int routetable[roubletablemax][2];//路由表
-  bool first ;
+  int dest;
   uint16_t counter;
   message_t pkt;
   int state;
@@ -32,13 +32,26 @@ implementation {
   int updateroute;
     bool busy;
  int sendflag;
-
+ int pstate;
 
 
   task void SendMessage();
   int getetx(uint16_t nodeid);
   uint16_t gettime();
   void updateroutetable();
+  void inittemp();
+  int getdest();
+
+  int getdest(){
+	return 0;
+  }
+
+  void inittemp(){
+	int i=0;
+	for(i;i<roubletablemax;i++){
+		routetable[i][0]=-1;
+		routetable[i][1]=-1;}
+  }
 
   int getetx(uint16_t nodeid){
 	return 0;
@@ -49,9 +62,12 @@ implementation {
 
 
   event void Boot.booted() {
+        level = -1;
 	sendtask = 0;
-    first = TRUE;
+        first = TRUE;
         updateroute=1;
+	sendflag=0;
+	inittemp();
 	call AMControl.start();
   }
 
@@ -63,7 +79,7 @@ implementation {
           msgpkt->data1    = 0;
           msgpkt->data2    = 0;
           msgpkt->remain   = 0;
-	      msgpkt->etx      = getetx(TOS_NODE_ID);
+	  msgpkt->etx      = getetx(TOS_NODE_ID);
           msgpkt->time     = gettime();
 	  if (call AMSend.send(0xffff,&pkt, sizeof(Message)) == SUCCESS) 
 	  {
@@ -77,12 +93,15 @@ implementation {
           awakestate=1;
           call Leds.led0On();
 	  if(updateroute==1){
-		if(TOS_NODE_ID == 0)
+		if(TOS_NODE_ID == 0){
+			level = 0;
 			updateroutetable();
+		}
 	  }
 	  if(updateroute==0){
+		pstate=0;
 		state=0;
-		call Timer0.startOneShot(100000);
+		call Timer0.startOneShot(1000);
 	  }	  
     }
     else {
@@ -106,13 +125,12 @@ implementation {
 
   event void Timer0.fired() {
 	//make a packet , put into queue ;
-          Message* msg= (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
-    
-	call SendQueue.enqueue(msg);
 	sendtask = 1;
 	if(awakestate==1&&sendtask==1)
 	{
+	    state=1;
             //send preamble message 
+	    sendflag=1;
 	    post SendMessage();
 	}
   }
@@ -123,6 +141,7 @@ implementation {
 	{	  
             call Leds.led0Off();
 	    state=0;
+	    pstate=0;
 	    awakestate=0;
 	    call sleepTimer.startOneShot(10000);	
 	}
@@ -174,11 +193,18 @@ implementation {
 	        btrpkt->etx      = getetx(TOS_NODE_ID);
 		btrpkt->time     = gettime();
 	}
-	if (call AMSend.send(0xffff,&pkt, sizeof(Message)) == SUCCESS) 
-	{
-	    call Leds.led1Toggle();
+	if(!busy){
+		busy=TRUE;
+		
+		if(sendflag == 1) 
+			dest = 0xffff;
+		 if(sendflag == 3)
+			dest = getdest();
+		if (call AMSend.send(dest,&pkt, sizeof(Message)) == SUCCESS) 
+		{
+			call Leds.led1Toggle();
+		}
 	}
-
   }
 
   event void routerTimer.fired()
@@ -202,16 +228,24 @@ implementation {
   event void AMSend.sendDone(message_t* msg, error_t err) {
 	if (&pkt == msg) {
 		if(sendflag==1){
-			state=1;
+			pstate=1;
 			call waitforack.startOneShot(2000);	
 		}
 		if(sendflag==2)
 		{
-			
 		}
 		if(sendflag==3)
 		{
-			call waitforack.startOneShot(2000);
+			call SendQueue.dequeue();
+			if(call SendQueue.empty() )
+				if(state ==1)
+					call sleepTimer.startOneShot(2000);
+			else{
+				atomic{
+				sendflag=3;
+				post SendMessage();
+				}
+			}	
 		}
         }
 	busy = FALSE; 
@@ -224,12 +258,15 @@ implementation {
 	{
 		if(btrpkt->datatype == 1){
 		//receive preamble ,send preamble ack ,stay awake 
-			atomic{
+		     atomic{
 			   sendflag=2;
+			   dest = btrpkt->nodeid;
 			   post SendMessage();
 			   call sleepTimer.stop();
-			   call sleepTimer.startOneShot(2000);
-			   }	
+			   if(state == 1){
+				call sleepTimer.startOneShot(2000);
+			   }
+	             }	
 		}
 		if(btrpkt->datatype == 2){
 			atomic{
@@ -248,41 +285,39 @@ implementation {
 			}
 			atomic{
 			   sendflag=4;
+			   dest = btrpkt->nodeid;
 			   post SendMessage();//回ack 
 			   call SendQueue.enqueue(btrpkt);
 			}
-			if(state == 0){
+			if(pstate == 0){
+			atomic{
 				sendflag=1;
-				post SendMessage();
-			}
-			if(state == 1)
-				sendflag=3;
-				post SendMessage();
-			
-		}
-		if(btrpkt->datatype == 4){
-		//判断有无待发数据，有则发，无则睡
-			call SendQueue.dequeue();
-			if(call SendQueue.empty())
-				call waitforack.startOneShot(2000);
-			else{
-				atomic{
-				sendflag=3;
 				post SendMessage();
 				}
 			}
+			if(pstate == 1)
+			atomic{
+				sendflag=3;
+				post SendMessage();
+			}
+		}
+		if(btrpkt->datatype == 4){
+		//判断有无待发数据，有则发，无则睡
+			
 		}
 		if(btrpkt->datatype == 5){
 		//更新路由表操作
-        int i;
-		   for( i =0 ;i < roubletablemax ;i++ )
-			if(routetable[i][0]==0)
+                   int i;
+		   for( i =0 ;i < roubletablemax ;i++ ){
+			if(routetable[i][0]==-1)
 			{
 			   routetable[i][0]=btrpkt->nodeid;
 			   routetable[i][1]=btrpkt->etx;
 			   break;
 			}
-		   call sleepTimer.stop();
+		   }
+	           if(level == -1)
+		       level =btrpkt->level+1;
 		   call routerTimer.startOneShot(updatesleep);	
 		}
 	}
