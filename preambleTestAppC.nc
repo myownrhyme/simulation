@@ -54,6 +54,8 @@ implementation {
   components ActiveMessageC;
   components new AMSenderC(AM_BLINKTORADIO);
   components new AMReceiverC(AM_BLINKTORADIO);
+  components Queue<Message*> as sendqueue;
+
 
   App.Boot -> MainC;
   App.Leds -> LedsC;
@@ -62,6 +64,7 @@ implementation {
   App.sleepTimer -> sleepTimer;
   App.waitforack -> waitforack;
   App.routerTimer -> routerTimer;
+  App.SendQueue -> sendqueue;
   App.Packet -> AMSenderC;
   App.AMPacket -> AMSenderC;
   App.AMControl -> ActiveMessageC; //具体的是初始化什么
