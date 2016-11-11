@@ -1,5 +1,4 @@
 #include <Timer.h>
-#include "BlinkToRadio.h"
 
 #define roubletablemax 15
 #define updatesleep 5000
@@ -18,12 +17,12 @@ module preambleTestC {
   uses interface AMSend;
   uses interface Receive;
   uses interface SplitControl as AMControl;
-  interface Queue<Message*> as SendQueue;
+  uses interface Queue<Message*> as SendQueue;
   
 }
 implementation {
   int routetable[roubletablemax][2];//路由表
-  bool first =true;
+  bool first ;
   uint16_t counter;
   message_t pkt;
   int state;
@@ -31,36 +30,33 @@ implementation {
   int sendtask;
   int level;
   int updateroute;
+    bool busy;
+ int sendflag;
 
 
-  //指定level
-  if(TOS_NODE_ID==0)
-	level=0;
-  else if(TOS_NODE_ID>0 && TOS_NODE_ID<50)
-	level = 1;
 
-
-  void SendMessage();
-  void getetx(uint16_t nodeid);
-  void gettime();
+  task void SendMessage();
+  int getetx(uint16_t nodeid);
+  uint16_t gettime();
   void updateroutetable();
 
   event void Boot.booted() {
 	sendtask = 0;
+    first = TRUE;
         updateroute=1;
 	call AMControl.start();
   }
 
   void updateroutetable(){
-          Message* pkt  = (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
-          pkt->nodeid   = TOS_NODE_ID;
-          pkt->datatype = 5;
-          pkt->level    = level;
-          pkt->data1    = 0;
-          pkt->data2    = 0;
-          pkt->remain   = 0;
-	  pkt->etx      = getetx();
-          pkt->time     = gettime();
+          Message* msgpkt  = (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
+          msgpkt->nodeid   = TOS_NODE_ID;
+          msgpkt->datatype = 5;
+          msgpkt->level    = level;
+          msgpkt->data1    = 0;
+          msgpkt->data2    = 0;
+          msgpkt->remain   = 0;
+	      msgpkt->etx      = getetx(TOS_NODE_ID);
+          msgpkt->time     = gettime();
 	  if (call AMSend.send(0xffff,&pkt, sizeof(Message)) == SUCCESS) 
 	  {
 		call Leds.led1Toggle();
@@ -78,7 +74,7 @@ implementation {
 	  }
 	  if(updateroute==0){
 		state=0;
-		call Timer0.startOneShot(newRound);
+		call Timer0.startOneShot(100000);
 	  }	  
     }
     else {
@@ -102,12 +98,14 @@ implementation {
 
   event void Timer0.fired() {
 	//make a packet , put into queue ;
-	SendQueue.enqueue();
+          Message* msg= (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
+    
+	call SendQueue.enqueue(msg);
 	sendtask = 1;
 	if(awakestate==1&&sendtask==1)
 	{
             //send preamble message 
-	    SendMessage();
+	    post SendMessage();
 	}
   }
 
@@ -118,7 +116,7 @@ implementation {
             call Leds.led0Off();
 	    state=0;
 	    awakestate=0;
-	    call sleepTimer.startOneShot(sleeptime);	
+	    call sleepTimer.startOneShot(10000);	
 	}
 	else
 	{
@@ -129,44 +127,44 @@ implementation {
   task void SendMessage() {
 	Message* btrpkt = (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
 	if(sendflag == 1){
-		pkt->nodeid   = TOS_NODE_ID;
-		pkt->datatype = 1;
-		pkt->level    = level;
-		pkt->data1    = 0;
-		pkt->data2    = 0;
-	        pkt->remain   = 0;
-	        pkt->etx      = getetx();
-		pkt->time     = gettime();
+		btrpkt->nodeid   = TOS_NODE_ID;
+		btrpkt->datatype = 1;
+		btrpkt->level    = level;
+		btrpkt->data1    = 0;
+		btrpkt->data2    = 0;
+	        btrpkt->remain   = 0;
+	        btrpkt->etx      = getetx(TOS_NODE_ID);
+		btrpkt->time     = gettime();
 	}			
 	if(sendflag == 2){
-		pkt->nodeid   = TOS_NODE_ID;
-		pkt->datatype = 2;
-		pkt->level    = level;
-		pkt->data1    = 0;
-		pkt->data2    = 0;
-		pkt->remain   = 0;
-		pkt->etx      = getetx();
-		pkt->time     = gettime();
+		btrpkt->nodeid   = TOS_NODE_ID;
+		btrpkt->datatype = 2;
+		btrpkt->level    = level;
+		btrpkt->data1    = 0;
+		btrpkt->data2    = 0;
+	        btrpkt->remain   = 0;
+	        btrpkt->etx      = getetx(TOS_NODE_ID);
+		btrpkt->time     = gettime();
 	}
 	if(sendflag == 3){
-	  pkt->nodeid   = TOS_NODE_ID;
-          pkt->datatype = 3;
-          pkt->level    = level;
-          pkt->data1    = 0;
-          pkt->data2    = 0;
-          pkt->remain   = 0;
-	  pkt->etx      = getetx();
-          pkt->time     = gettime();
+		btrpkt->nodeid   = TOS_NODE_ID;
+		btrpkt->datatype = 3;
+		btrpkt->level    = level;
+		btrpkt->data1    = 0;
+		btrpkt->data2    = 0;
+	        btrpkt->remain   = 0;
+	        btrpkt->etx      = getetx(TOS_NODE_ID);
+		btrpkt->time     = gettime();
 	}
 	if(sendflag == 4){
-	  pkt->nodeid   = TOS_NODE_ID;
-          pkt->datatype = 4;
-          pkt->level    = level;
-          pkt->data1    = 0;
-          pkt->data2    = 0;
-          pkt->remain   = 0;
-	  pkt->etx      = getetx();
-          pkt->time     = gettime();
+		btrpkt->nodeid   = TOS_NODE_ID;
+		btrpkt->datatype = 4;
+		btrpkt->level    = level;
+		btrpkt->data1    = 0;
+		btrpkt->data2    = 0;
+	        btrpkt->remain   = 0;
+	        btrpkt->etx      = getetx(TOS_NODE_ID);
+		btrpkt->time     = gettime();
 	}
 	if (call AMSend.send(0xffff,&pkt, sizeof(Message)) == SUCCESS) 
 	{
@@ -186,10 +184,12 @@ implementation {
   event void waitforack.fired()//ACK如果没在规定时间内返回，则开始重传
   {
 	//如果等待的是preamble的ack,重发preamble，如果等待的是data的ack，重发data
-        SendMessage();
+       post SendMessage();
   }
   
-  
+  event void LocalTimer.fired()//ACK如果没在规定时间内返回，则开始重传
+  {
+  }
 
   event void AMSend.sendDone(message_t* msg, error_t err) {
 	if (&pkt == msg) {
@@ -211,7 +211,7 @@ implementation {
   
 
   event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
-	Message* btrpkt = (message*)payload;
+	Message* btrpkt = (Message*)payload;
 	if(len == sizeof(Message))   
 	{
 		if(btrpkt->datatype == 1){
@@ -219,14 +219,14 @@ implementation {
 			atomic{
 			   sendflag=2;
 			   post SendMessage();
-			   sleepTimer.stop();
-			   sleepTimer.startOneshot(waitdecidetime);
+			   call sleepTimer.stop();
+			   call sleepTimer.startOneShot(2000);
 			   }	
 		}
 		if(btrpkt->datatype == 2){
 			atomic{
 			   sendflag=3;
-			   waitforack.stop();
+			   call waitforack.stop();
 			   //judge
 			   post SendMessage();
 			}
@@ -241,7 +241,7 @@ implementation {
 			atomic{
 			   sendflag=4;
 			   post SendMessage();//回ack 
-			   call SendQueue.enqueue();
+			   call SendQueue.enqueue(btrpkt);
 			}
 			if(state == 0){
 				sendflag=1;
@@ -266,14 +266,15 @@ implementation {
 		}
 		if(btrpkt->datatype == 5){
 		//更新路由表操作
-		   for(int i =0 ;i < roubletablemax ;i++ )
+        int i;
+		   for( i =0 ;i < roubletablemax ;i++ )
 			if(routetable[i][0]==0)
 			{
 			   routetable[i][0]=btrpkt->nodeid;
 			   routetable[i][1]=btrpkt->etx;
 			   break;
 			}
-		   call sleepTimer.Stop();
+		   call sleepTimer.stop();
 		   call routerTimer.startOneShot(updatesleep);	
 		}
 	}

@@ -37,18 +37,19 @@
  * @date   Feb 1, 2006
  */
 #include <Timer.h>
-#include "BlinkToRadio.h"
+#include "preambleTest.h"
 
 configuration preambleTestAppC {
 }
 implementation {
   components MainC;
   components LedsC;
-  components BlinkToRadioC as App;
+  components preambleTestC as App;
   components new TimerMilliC() as Timer0;
 
-  components new TimerMilliC() as nextSense;
+  components new TimerMilliC() as sleepTimer;
    components new TimerMilliC() as waitforack;
+   components new TimerMilliC() as routerTimer;
 
   components ActiveMessageC;
   components new AMSenderC(AM_BLINKTORADIO);
@@ -58,10 +59,9 @@ implementation {
   App.Leds -> LedsC;
   App.Timer0 -> Timer0;
 
-  
-  App.nextSense -> nextSense;
+  App.sleepTimer -> sleepTimer;
   App.waitforack -> waitforack;
-  
+  App.routerTimer -> routerTimer;
   App.Packet -> AMSenderC;
   App.AMPacket -> AMSenderC;
   App.AMControl -> ActiveMessageC; //具体的是初始化什么
