@@ -129,17 +129,44 @@ implementation {
   task void SendMessage() {
 	Message* btrpkt = (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
 	if(sendflag == 1){
-		btrpkt->nodeid =TOS_NODE_ID;
-
+		pkt->nodeid   = TOS_NODE_ID;
+		pkt->datatype = 1;
+		pkt->level    = level;
+		pkt->data1    = 0;
+		pkt->data2    = 0;
+	        pkt->remain   = 0;
+	        pkt->etx      = getetx();
+		pkt->time     = gettime();
 	}			
 	if(sendflag == 2){
-	
+		pkt->nodeid   = TOS_NODE_ID;
+		pkt->datatype = 2;
+		pkt->level    = level;
+		pkt->data1    = 0;
+		pkt->data2    = 0;
+		pkt->remain   = 0;
+		pkt->etx      = getetx();
+		pkt->time     = gettime();
 	}
 	if(sendflag == 3){
-	
+	  pkt->nodeid   = TOS_NODE_ID;
+          pkt->datatype = 3;
+          pkt->level    = level;
+          pkt->data1    = 0;
+          pkt->data2    = 0;
+          pkt->remain   = 0;
+	  pkt->etx      = getetx();
+          pkt->time     = gettime();
 	}
 	if(sendflag == 4){
-	
+	  pkt->nodeid   = TOS_NODE_ID;
+          pkt->datatype = 4;
+          pkt->level    = level;
+          pkt->data1    = 0;
+          pkt->data2    = 0;
+          pkt->remain   = 0;
+	  pkt->etx      = getetx();
+          pkt->time     = gettime();
 	}
 	if (call AMSend.send(0xffff,&pkt, sizeof(Message)) == SUCCESS) 
 	{
