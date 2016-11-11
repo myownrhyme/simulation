@@ -40,6 +40,14 @@ implementation {
   uint16_t gettime();
   void updateroutetable();
 
+  int getetx(uint16_t nodeid){
+	return 0;
+}
+  uint16_t gettime(){
+  return 1;
+}
+
+
   event void Boot.booted() {
 	sendtask = 0;
     first = TRUE;
