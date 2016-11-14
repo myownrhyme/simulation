@@ -50,6 +50,7 @@ implementation {
   components new TimerMilliC() as sleepTimer;
    components new TimerMilliC() as waitforack;
    components new TimerMilliC() as routerTimer;
+  components new TimerMilliC() as dataTimer;
 
   components ActiveMessageC;
   components new AMSenderC(AM_BLINKTORADIO);
@@ -60,6 +61,7 @@ implementation {
   App.Leds -> LedsC;
   App.Timer0 -> Timer0;
 
+  App.dataTimer ->dataTimer;
   App.sleepTimer -> sleepTimer;
   App.waitforack -> waitforack;
   App.routerTimer -> routerTimer;

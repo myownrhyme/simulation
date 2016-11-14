@@ -11,7 +11,8 @@ module preambleTestC {
   uses interface Timer<TMilli> as LocalTimer;
   uses interface Timer<TMilli> as routerTimer;//下一个数据发送
   uses interface Timer<TMilli> as waitforack;	//等待ACK时间
-  
+  uses interface Timer<TMilli> as dataTimer;
+
   uses interface Packet;
   uses interface AMPacket;
   uses interface AMSend;
@@ -43,7 +44,7 @@ implementation {
   int getdest();
 
   int getdest(){
-	return 0;
+	return routable[0][0];
   }
 
   void inittemp(){
@@ -54,7 +55,14 @@ implementation {
   }
 
   int getetx(uint16_t nodeid){
-	return 0;
+	int count=0;
+	int i =0;
+	for(i;i<roubletablemax;i++)
+		if(routetable[i][0]!= -1)
+			count++;
+		else
+			break;
+	return count;
 }
   uint16_t gettime(){
   return 1;
@@ -64,7 +72,6 @@ implementation {
   event void Boot.booted() {
         level = -1;
 	sendtask = 0;
-        first = TRUE;
         updateroute=1;
 	sendflag=0;
 	inittemp();
@@ -213,6 +220,22 @@ implementation {
 	call AMControl.stop();
   }
   
+  event void dataTimer.fired()
+  {
+	sendflag=3;
+	int i=0,j=0;
+	for(i;i<roubletablemax;i++)
+	for(j=i+1;j<roubletablemax;j++)
+	{
+		if(routetable[i][1] > routetable[j][1])
+		{
+			int temp = routetable[i][1];
+			routetable[i][1]=routetable[j][1];
+			routetable[j][1]=temp;
+		}
+	}
+	post SendMessage();
+  }
 
   //ACK等待
   event void waitforack.fired()//ACK如果没在规定时间内返回，则开始重传
@@ -223,6 +246,7 @@ implementation {
   
   event void LocalTimer.fired()//ACK如果没在规定时间内返回，则开始重传
   {
+
   }
 
   event void AMSend.sendDone(message_t* msg, error_t err) {
@@ -270,10 +294,8 @@ implementation {
 		}
 		if(btrpkt->datatype == 2){
 			atomic{
-			   sendflag=3;
 			   call waitforack.stop();
-			   //judge
-			   post SendMessage();
+			   call dataTimer.startOneShot(2000);
 			}
 		//receive preamble ack ,send data ,wait data ack
 		}
