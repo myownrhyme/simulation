@@ -74,7 +74,7 @@ implementation {
 
 
   event void Boot.booted() {
-        level = -1;
+        level = 65535;
 	sendtask = 0;
         updateroute=1;
 	sendflag=0;
@@ -112,7 +112,7 @@ implementation {
 	  if(updateroute==0){
 		pstate=0;
 		state=0;
-		call Timer0.startOneShot(1000);
+		call Timer0.startOneShot(5000);
 	  }	  
     }
     else {
@@ -154,7 +154,7 @@ implementation {
 	    state=0;
 	    pstate=0;
 	    awakestate=0;
-	    call sleepTimer.startOneShot(10000);	
+	    call sleepTimer.startOneShot(15000);	
 	}
 	else
 	{
@@ -220,6 +220,10 @@ implementation {
 
   event void routerTimer.fired()
   {
+	int i;
+	dbg("boot" ,"%d send route message\n" ,TOS_NODE_ID);
+	for(i=0;i<15;i++)
+		dbg("boot" ,"route table :%d\n" ,routetable[i][0]);
 	updateroutetable();
 	call AMControl.stop();
   }
@@ -288,6 +292,7 @@ implementation {
 	{
 		if(btrpkt->datatype == 1){
 		//receive preamble ,send preamble ack ,stay awake 
+		dbg("senddelay", "receive 1\n");
 		     atomic{
 			   sendflag=2;
 			   dest = btrpkt->nodeid;
@@ -299,6 +304,8 @@ implementation {
 	             }	
 		}
 		if(btrpkt->datatype == 2){
+		
+		dbg("senddelay", "receive 2\n");
 			atomic{
 			   call waitforack.stop();
 			   call dataTimer.startOneShot(2000);
@@ -307,6 +314,8 @@ implementation {
 		}
 		if(btrpkt->datatype == 3){
 		//receive data ,send data ack，转发
+
+		dbg("senddelay", "receive 3\n");
 			if(TOS_NODE_ID==0)
 			{
 			
@@ -332,11 +341,11 @@ implementation {
 		if(btrpkt->datatype == 4){
 		//判断有无待发数据，有则发，无则睡
 			t2=call LocalTime.get();
-			dbg("senddelay", "%s .\n", t2-t1);
+			dbg("senddelay", "%d .\n", t2-t1);
 		}
 		if(btrpkt->datatype == 5){
-		//更新路由表操作
                    int i;
+		   if(btrpkt->level <= level){
 		   for( i =0 ;i < roubletablemax ;i++ ){
 			if(routetable[i][0]==-1)
 			{
@@ -344,10 +353,12 @@ implementation {
 			   routetable[i][1]=btrpkt->etx;
 			   break;
 			}
-		   }
-	           if(level == -1)
+		     }
+		  }
+	           if(level == 65535)
 		       level =btrpkt->level+1;
-		   call routerTimer.startOneShot(updatesleep);	
+		   call routerTimer.startOneShot(5000);	
+		   dbg("boot","receive 5\n");
 		}
 	}
         return msg;
