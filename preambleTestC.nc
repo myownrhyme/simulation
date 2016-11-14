@@ -258,7 +258,7 @@ implementation {
 	if (&pkt == msg) {
 		if(sendflag==1){
 			pstate=1;
-			t1=LocalTime.get();
+			t1=call  LocalTime.get();
 			call waitforack.startOneShot(2000);	
 		}
 		if(sendflag==2)
@@ -331,7 +331,7 @@ implementation {
 		}
 		if(btrpkt->datatype == 4){
 		//判断有无待发数据，有则发，无则睡
-			t2=LocalTime.get();
+			t2=call LocalTime.get();
 			dbg("senddelay", "%s .\n", t2-t1);
 		}
 		if(btrpkt->datatype == 5){
