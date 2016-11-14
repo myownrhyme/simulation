@@ -8,10 +8,12 @@ module preambleTestC {
   uses interface Leds;
   uses interface Timer<TMilli> as Timer0;
   uses interface Timer<TMilli> as sleepTimer;
-  uses interface Timer<TMilli> as LocalTimer;
+
   uses interface Timer<TMilli> as routerTimer;//下一个数据发送
   uses interface Timer<TMilli> as waitforack;	//等待ACK时间
   uses interface Timer<TMilli> as dataTimer;
+
+  uses interface LocalTime<TMilli> as LocalTime;
 
   uses interface Packet;
   uses interface AMPacket;
@@ -34,6 +36,8 @@ implementation {
     bool busy;
  int sendflag;
  int pstate;
+ int t1;
+ int t2;
 
 
   task void SendMessage();
@@ -249,15 +253,12 @@ implementation {
        post SendMessage();
   }
   
-  event void LocalTimer.fired()//ACK如果没在规定时间内返回，则开始重传
-  {
-
-  }
 
   event void AMSend.sendDone(message_t* msg, error_t err) {
 	if (&pkt == msg) {
 		if(sendflag==1){
 			pstate=1;
+			t1=LocalTime.get();
 			call waitforack.startOneShot(2000);	
 		}
 		if(sendflag==2)
@@ -330,7 +331,8 @@ implementation {
 		}
 		if(btrpkt->datatype == 4){
 		//判断有无待发数据，有则发，无则睡
-			
+			t2=LocalTime.get();
+			dbg("senddelay", "%s .\n", t2-t1);
 		}
 		if(btrpkt->datatype == 5){
 		//更新路由表操作
