@@ -42,9 +42,9 @@ implementation {
   void updateroutetable();
   void inittemp();
   int getdest();
-
+  void sort();
   int getdest(){
-	return routable[0][0];
+	return routetable[0][0];
   }
 
   void inittemp(){
@@ -220,11 +220,10 @@ implementation {
 	call AMControl.stop();
   }
   
-  event void dataTimer.fired()
-  {
-	sendflag=3;
-	int i=0,j=0;
-	for(i;i<roubletablemax;i++)
+ void sort(){
+	int i;
+	int j;
+	for(i=0;i<roubletablemax;i++)
 	for(j=i+1;j<roubletablemax;j++)
 	{
 		if(routetable[i][1] > routetable[j][1])
@@ -234,6 +233,12 @@ implementation {
 			routetable[j][1]=temp;
 		}
 	}
+
+}
+  event void dataTimer.fired()
+  {
+	sendflag=3;
+	sort();
 	post SendMessage();
   }
 
