@@ -57,7 +57,7 @@ implementation {
   components new AMReceiverC(AM_BLINKTORADIO);
   components new QueueC(Message*, 20) as SendQueueP;
   components HilTimerMilliC;
-
+  components RandomC;
 
   App.Boot -> MainC;
   App.Leds -> LedsC;
@@ -74,4 +74,5 @@ implementation {
   App.AMSend -> AMSenderC;
   App.Receive -> AMReceiverC;
   App.LocalTime -> HilTimerMilliC;
+  App.Random -> RandomC;
 }
