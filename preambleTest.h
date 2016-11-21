@@ -20,7 +20,16 @@ typedef nx_struct Message
 	nx_uint8_t remain;
 }Message;
 
-
+typedef struct exprData{
+	int countPre ;
+	int countPreAck;
+	int countData;
+	int countDataAck;
+	int TimePoint1;
+	int TimePoint2;
+	int TimePoint3;
+	int TimePoint4;
+}exprData;
 
 
 #endif
