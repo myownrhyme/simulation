@@ -180,6 +180,7 @@ implementation {
 		Message* btrpkt = (Message*)(call Packet.getPayload(&pkt, sizeof(Message)));
 		if(sendflag == 1){
 			btrpkt->nodeid   = TOS_NODE_ID;
+            btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 1;
 			btrpkt->level    = level;
 			btrpkt->data1    = 0;
@@ -190,6 +191,7 @@ implementation {
 		}			
 		if(sendflag == 2){
 			btrpkt->nodeid   = TOS_NODE_ID;
+            btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 2;
 			btrpkt->level    = level;
 			btrpkt->data1    = 0;
@@ -200,6 +202,7 @@ implementation {
 		}
 		if(sendflag == 3){
 			btrpkt->nodeid   = TOS_NODE_ID;
+            btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 3;
 			btrpkt->level    = level;
 			btrpkt->data1    = 0;
@@ -210,6 +213,7 @@ implementation {
 		}
 		if(sendflag == 4){
 			btrpkt->nodeid   = TOS_NODE_ID;
+            btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 4;
 			btrpkt->level    = level;
 			btrpkt->data1    = 0;
@@ -290,7 +294,7 @@ implementation {
 				call SendQueue.dequeue();
 				if(call SendQueue.empty() ){
 					if(state ==1)
-						call sleepTimer.startOneShot(2000);
+						call sleepTimer.startOneShot(5000);
 				}
 				else{
 					atomic{
@@ -348,6 +352,11 @@ implementation {
                         call waitforack.stop();
                         sendflag=3;
                         sort();
+                        dest=getdest();
+                        for(i=0;i<15;i++){
+                        if(routetable[i][0]>=0)
+                        dbg("ack","routetable %d\n",routetable[i][0]);
+                        }
                         dbg("ack","send data to %d\n",getdest());
                         SendMessage();
                     }
@@ -358,8 +367,8 @@ implementation {
             if(btrpkt->datatype == 3){
                 atomic{
                     sendflag=4;
-                    dest = btrpkt->nodeid;
-                    dbg("ack","send ack to %d",btrpkt->nodeid);
+                    dest = btrpkt->dest;
+                    dbg("ack","send ack to %d\n",btrpkt->dest);
                     SendMessage();//»Øack
                 }
                 if(TOS_NODE_ID==0)
@@ -367,6 +376,7 @@ implementation {
                     //dbg("senddelay", "root get message\n");
                 }
                 else{ 
+                    btrpkt->dest=TOS_NODE_ID;
                     call SendQueue.enqueue(btrpkt);
                     //if(TOS_NODE_ID > 3)
                     //dbg("senddelay", "receive data from %d\n",btrpkt->nodeid);
