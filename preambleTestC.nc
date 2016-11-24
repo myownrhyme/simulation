@@ -23,7 +23,8 @@ module preambleTestC {
 implementation {
 	int routetable[roubletablemax][2];//路由表
 	uint16_t dest;
-	uint16_t counter;
+	uint16_t counter1;
+    uint16_t counter;
 	message_t pkt;
 	int state;
 	int awakestate;
@@ -35,6 +36,7 @@ implementation {
 	int pstate;
 	uint32_t t1;
 	uint32_t t2;
+    uint32_t t3[100];
 	int isupdate;
 	exprData exp;
     int countpre ;
@@ -83,8 +85,13 @@ implementation {
 
 
 	event void Boot.booted() {
+        int i;
+        for(i=0;i<100;i++)
+            t3[i]=0;
 		level = 65535;
         countpre=0;
+        counter=0;
+        counter1=0;
 		sendtask = 0;
 		updateroute=1;
 		isupdate=0;
@@ -112,6 +119,9 @@ implementation {
 	event void AMControl.startDone(error_t err) {
 		if (err == SUCCESS) 
 		{
+            counter++;
+            t1=0;
+            t2=0;
 			awakestate=1;
 			call Leds.led0On();
 			if(updateroute==1){
@@ -200,7 +210,9 @@ implementation {
 			btrpkt->etx      = getetx(TOS_NODE_ID);
 			btrpkt->time     = gettime();
 		}
-		if(sendflag == 3){
+		if(sendflag == 3 ){
+             if(sendtask==1){
+                sendtask=0;
 			btrpkt->nodeid   = TOS_NODE_ID;
             btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 3;
@@ -210,7 +222,21 @@ implementation {
 			btrpkt->remain   = 0;
 			btrpkt->etx      = getetx(TOS_NODE_ID);
 			btrpkt->time     = gettime();
-		}
+
+            }
+            else if(! (call SendQueue.empty())){
+            Message* pkt = call SendQueue.head();
+			btrpkt->nodeid   = pkt->nodeid;
+            btrpkt->dest     = TOS_NODE_ID;
+			btrpkt->datatype = pkt->datatype;
+			btrpkt->level    = pkt->level;
+			btrpkt->data1    = pkt->data1;
+			btrpkt->data2    = pkt->data2;
+			btrpkt->remain   = pkt->remain;
+			btrpkt->etx      = getetx(TOS_NODE_ID);
+			btrpkt->time     = gettime();
+		    }
+        }
 		if(sendflag == 4){
 			btrpkt->nodeid   = TOS_NODE_ID;
             btrpkt->dest     = TOS_NODE_ID;
@@ -224,143 +250,165 @@ implementation {
 		}
 		if(!busy){
 			busy=TRUE;
-
 	        if(sendflag == 1) 
 				dest = 0xffff;
-
 			if (call AMSend.send(dest,&pkt, sizeof(Message)) == SUCCESS) 
-			{
-			if(sendflag==4)
-	//			dbg("ack","send data ack to %d,send flag is  %d \n",dest,sendflag);
-				call Leds.led1Toggle();
-			}
-		}
-	}
+            {
+                //if(sendflag==4)
+                //dbg("ack","send data ack to %d,send flag is  %d \n",dest,sendflag);
+                call Leds.led1Toggle();
+            }else{
+                dbg("ack","send error/n");
+            }
+        }
+        else{
+            dbg("ack","busy error\n");
+        }
+    }
 
-	event void routerTimer.fired()
-	{
-	//		dbg("ack" ,"%d send route message,my level is %d \n" ,TOS_NODE_ID,level);
-		if(isupdate==0)
-		{
-			isupdate=1;	
-			updateroutetable();}
-		call AMControl.stop();
-	}
+    event void routerTimer.fired()
+    {
+        //		dbg("ack" ,"%d send route message,my level is %d \n" ,TOS_NODE_ID,level);
+        if(isupdate==0)
+        {
+            isupdate=1;	
+            updateroutetable();}
+        call AMControl.stop();
+    }
 
-	void sort(){
-		int i;
-		int j;
-		for(i=0;i<roubletablemax;i++)
-			for(j=i+1;j<roubletablemax;j++)
-			{
-				if(routetable[i][1] > routetable[j][1] && routetable[i][1]>0 && routetable[j][1]>0)
-				{
-					int temp = routetable[i][1];
-					routetable[i][1]=routetable[j][1];
-					routetable[j][1]=temp;
-					temp = routetable[i][0];
-					routetable[i][0]=routetable[j][0];
-					routetable[j][0]=temp;
-				}
-			}
+    void sort(){
+        int i;
+        int j;
+        for(i=0;i<roubletablemax;i++)
+            for(j=i+1;j<roubletablemax;j++)
+            {
+                if(routetable[i][1] > routetable[j][1] && routetable[i][1]>0 && routetable[j][1]>0)
+                {
+                    int temp = routetable[i][1];
+                    routetable[i][1]=routetable[j][1];
+                    routetable[j][1]=temp;
+                    temp = routetable[i][0];
+                    routetable[i][0]=routetable[j][0];
+                    routetable[j][0]=temp;
+                }
+            }
 
-	}
-	event void dataTimer.fired()
-	{
-	}
+    }
+    event void dataTimer.fired()
+    {
+    }
 
-	//ACK等待
-	event void waitforack.fired()//ACK如果没在规定时间内返回，则开始重传
-	{
-		//如果等待的是preamble的ack,重发preamble，如果等待的是data的ack，重发data
-		SendMessage();
-	}
+    //ACK等待
+    event void waitforack.fired()//ACK如果没在规定时间内返回，则开始重传
+    {
+        //如果等待的是preamble的ack,重发preamble，如果等待的是data的ack，重发data
+        SendMessage();
+    }
 
 
-	event void AMSend.sendDone(message_t* msg, error_t err) {
-		if (&pkt == msg) {
-			if(sendflag==1){
-				t1=call  LocalTime.get();
-				call waitforack.startOneShot(2000);	
-			}
-			if(sendflag==2)
-			{
-			}
-			if(sendflag==3)
-			{   
+    event void AMSend.sendDone(message_t* msg, error_t err) {
+        busy = FALSE; 
+        if (&pkt == msg) {
+            if(sendflag==1){
+                counter1++;
+                t1=call  dataTimer.getNow();
+                dbg("count","%d   %d    %d\n",t1,counter,counter1);
+                call waitforack.startOneShot(2000);	
+            }
+            if(sendflag==2)
+            {
+            }
+            if(sendflag==3)
+            {   
                 countpre=0;
                 inittemp();
                 pstate=0;
-				call SendQueue.dequeue();
-				if(call SendQueue.empty() ){
-					if(state ==1)
-						call sleepTimer.startOneShot(5000);
-				}
-				else{
-					atomic{
-							sendflag=1;
-							SendMessage();
-						}
-					}	
-			}
-		}
-		busy = FALSE; 
-	}
-
-
-	event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
-		Message* btrpkt = (Message*)payload;
-	//	if(btrpkt->datatype==4)
-	//		dbg("senddelay","receive 4\n");
-		if(len == sizeof(Message))   
-		{
-        
-            if(btrpkt->datatype == 4){
-                dbg("senddelay", "receive 4 .\n");
-                t2=call LocalTime.get();
-            }
-			if(btrpkt->datatype == 1){
-				//receive preamble ,send preamble ack ,stay awake 
-				//dbg("senddelay", "receive 1\n");
-				atomic{
-					sendflag=2;
-					dest = btrpkt->nodeid;
-					SendMessage();
-				}
-			}
-            if(btrpkt->datatype == 2){
-                if(TOS_NODE_ID==0){
-                    
-                }
-                else{
-                int i;
-                //dbg("senddelay", "receive 2 from %d\n",btrpkt->nodeid);
+                call SendQueue.dequeue();
                 atomic{
-                    if(btrpkt->level <= level){
-                        countpre++;
-                        for(i=0;i<roubletablemax;i++)
-                        {
-                            if(routetable[i][0]==-1)
-                            {
-                                routetable[i][0]=btrpkt->nodeid;
-                                routetable[i][1]=btrpkt->etx;
-                                break;
-                            }
+                    if(call SendQueue.empty() ){
+                        if(state ==1)
+                            call sleepTimer.startOneShot(5000);
+                    }
+                    else{
+                        atomic{
+                            sendflag=1;
+                            SendMessage();
                         }
                     }
-                    if(countpre>= 0.8*getroutetablesize() && countpre>=1){
-                        call waitforack.stop();
-                        sendflag=3;
-                        sort();
-                        dest=getdest();
-                        for(i=0;i<15;i++){
-                        if(routetable[i][0]>=0)
-                        dbg("ack","routetable %d\n",routetable[i][0]);
-                        }
-                        dbg("ack","send data to %d\n",getdest());
+                }
+            }
+            if(sendflag==4){
+                    atomic{
+                        sendflag=1;
                         SendMessage();
                     }
+            }
+        }
+    }
+
+
+    event message_t* Receive.receive(message_t* msg, void* payload, uint8_t len){
+        Message* btrpkt = (Message*)payload;
+        //	if(btrpkt->datatype==4)
+        //		dbg("senddelay","receive 4\n");
+        if(len == sizeof(Message))   
+        {
+
+            if(btrpkt->datatype == 4){
+                int i;
+                t2=call dataTimer.getNow();
+                dbg("senddelay","receive 4\n");
+                for(i=0;i<100;i++){
+                    if(t3[i]==0){
+                        dbg("count","%d   %d   %d    %d\n",t2,t1,counter,counter1);
+                        t3[i]=t2-t1;
+                        break;
+                    }
                 }
+                dbg("senddelay", "receive 4 .\n");
+            }
+            if(btrpkt->datatype == 1){
+                //receive preamble ,send preamble ack ,stay awake 
+                //dbg("senddelay", "receive 1\n");
+                atomic{
+                    sendflag=2;
+                    dest = btrpkt->nodeid;
+                    SendMessage();
+                }
+            }
+            if(btrpkt->datatype == 2){
+                if(TOS_NODE_ID==0){
+
+                }
+                else{
+                    int i;
+                    //dbg("senddelay", "receive 2 from %d\n",btrpkt->nodeid);
+                    atomic{
+                        if(btrpkt->level <= level){
+                            countpre++;
+                            for(i=0;i<roubletablemax;i++)
+                            {
+                                if(routetable[i][0]==-1)
+                                {
+                                    routetable[i][0]=btrpkt->nodeid;
+                                    routetable[i][1]=btrpkt->etx;
+                                    break;
+                                }
+                            }
+                        }
+                        if(countpre>= 0.8*getroutetablesize() && countpre>=1){
+                            call waitforack.stop();
+                            sendflag=3;
+                            sort();
+                            dest=getdest();
+                            for(i=0;i<15;i++){
+                                if(routetable[i][0]>=0)
+                                    dbg("ack","routetable %d\n",routetable[i][0]);
+                            }
+                            dbg("ack","send data to %d\n",getdest());
+                            SendMessage();
+                        }
+                    }
                 }
                 //receive preamble ack ,send data ,wait data ack
             }
@@ -376,15 +424,9 @@ implementation {
                     //dbg("senddelay", "root get message\n");
                 }
                 else{ 
-                    btrpkt->dest=TOS_NODE_ID;
                     call SendQueue.enqueue(btrpkt);
                     //if(TOS_NODE_ID > 3)
                     //dbg("senddelay", "receive data from %d\n",btrpkt->nodeid);
-                    
-                    atomic{
-                        sendflag=1;
-                        SendMessage();
-                    }
                 }
             }
             if(btrpkt->datatype == 5){
