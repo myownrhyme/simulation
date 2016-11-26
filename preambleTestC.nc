@@ -166,6 +166,7 @@ implementation {
 			state=1;
 			//send preamble message 
 			sendflag=1;
+            if(TOS_NODE_ID!=0)
 			SendMessage();
 		}
 	}
@@ -217,8 +218,8 @@ implementation {
             btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 3;
 			btrpkt->level    = level;
-			btrpkt->data1    = 0;
-			btrpkt->data2    = 0;
+			btrpkt->data1    = call LocalTime.get();
+			btrpkt->data2    = t1;
 			btrpkt->remain   = 0;
 			btrpkt->etx      = getetx(TOS_NODE_ID);
 			btrpkt->time     = gettime();
@@ -302,6 +303,7 @@ implementation {
     event void waitforack.fired()//ACK如果没在规定时间内返回，则开始重传
     {
         //如果等待的是preamble的ack,重发preamble，如果等待的是data的ack，重发data
+        if(TOS_NODE_ID!=0)
         SendMessage();
     }
 
@@ -311,7 +313,7 @@ implementation {
         if (&pkt == msg) {
             if(sendflag==1){
                 counter1++;
-                t1=call  dataTimer.getNow();
+                t1=call  LocalTime.get();
                 dbg("count","%d   %d    %d\n",t1,counter,counter1);
                 call waitforack.startOneShot(2000);	
             }
@@ -332,6 +334,7 @@ implementation {
                     else{
                         atomic{
                             sendflag=1;
+                            if(TOS_NODE_ID!=0)
                             SendMessage();
                         }
                     }
@@ -340,6 +343,7 @@ implementation {
             if(sendflag==4){
                     atomic{
                         sendflag=1;
+                        if(TOS_NODE_ID!=0)
                         SendMessage();
                     }
             }
@@ -356,7 +360,7 @@ implementation {
 
             if(btrpkt->datatype == 4){
                 int i;
-                t2=call dataTimer.getNow();
+                t2=call LocalTime.get();
                 dbg("senddelay","receive 4\n");
                 for(i=0;i<100;i++){
                     if(t3[i]==0){
@@ -365,15 +369,19 @@ implementation {
                         break;
                     }
                 }
+                t1=0;
+                t2=0;
                 dbg("senddelay", "receive 4 .\n");
             }
             if(btrpkt->datatype == 1){
                 //receive preamble ,send preamble ack ,stay awake 
                 //dbg("senddelay", "receive 1\n");
                 atomic{
+                    if(btrpkt->level>level){
                     sendflag=2;
                     dest = btrpkt->nodeid;
                     SendMessage();
+                    }
                 }
             }
             if(btrpkt->datatype == 2){
