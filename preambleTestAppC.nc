@@ -58,7 +58,6 @@ implementation {
   components new QueueC(Message*, 20) as SendQueueP;
   components HilTimerMilliC;
   components RandomC;
-
   App.Boot -> MainC;
   App.Leds -> LedsC;
   App.Timer0 -> Timer0;

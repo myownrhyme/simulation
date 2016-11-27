@@ -179,7 +179,7 @@ implementation {
 			state=0;
 			pstate=0;
 			awakestate=0;
-			call sleepTimer.startOneShot(15000);	
+			call sleepTimer.startOneShot(150000);	
 		}
 		else
 		{
@@ -218,8 +218,8 @@ implementation {
             btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = 3;
 			btrpkt->level    = level;
-			btrpkt->data1    = call LocalTime.get();
-			btrpkt->data2    = t1;
+			btrpkt->data1    = t1;
+			btrpkt->data2    = 0;
 			btrpkt->remain   = 0;
 			btrpkt->etx      = getetx(TOS_NODE_ID);
 			btrpkt->time     = gettime();
@@ -227,6 +227,7 @@ implementation {
             }
             else if(! (call SendQueue.empty())){
             Message* pkt = call SendQueue.head();
+            //dbg("tran","send tran\n");
 			btrpkt->nodeid   = pkt->nodeid;
             btrpkt->dest     = TOS_NODE_ID;
 			btrpkt->datatype = pkt->datatype;
@@ -255,8 +256,8 @@ implementation {
 				dest = 0xffff;
 			if (call AMSend.send(dest,&pkt, sizeof(Message)) == SUCCESS) 
             {
-                //if(sendflag==4)
-                //dbg("ack","send data ack to %d,send flag is  %d \n",dest,sendflag);
+                if(btrpkt->nodeid!=btrpkt->dest)
+              //  dbg("tran","~~~~ data\n");
                 call Leds.led1Toggle();
             }else{
                 dbg("ack","send error/n");
@@ -313,9 +314,10 @@ implementation {
         if (&pkt == msg) {
             if(sendflag==1){
                 counter1++;
-                t1=call  LocalTime.get();
-                dbg("count","%d   %d    %d\n",t1,counter,counter1);
-                call waitforack.startOneShot(2000);	
+                if (t1==0)
+                t1=call LocalTime.get();
+                //dbg("count","%d   %d    %d\n",t1,counter,counter1);
+                call waitforack.startOneShot(500);	
             }
             if(sendflag==2)
             {
@@ -389,17 +391,18 @@ implementation {
 
                 }
                 else{
-                    int i;
+                    int i,s;
                     //dbg("senddelay", "receive 2 from %d\n",btrpkt->nodeid);
                     atomic{
-                        if(btrpkt->level <= level){
+                        if(btrpkt->level < level){
                             countpre++;
                             for(i=0;i<roubletablemax;i++)
                             {
                                 if(routetable[i][0]==-1)
                                 {
                                     routetable[i][0]=btrpkt->nodeid;
-                                    routetable[i][1]=btrpkt->etx;
+                                    s= (call Random.rand16())%29+50;
+                                    routetable[i][1]= btrpkt->etx;
                                     break;
                                 }
                             }
@@ -420,21 +423,26 @@ implementation {
                 }
                 //receive preamble ack ,send data ,wait data ack
             }
+
             if(btrpkt->datatype == 3){
+                dbg("tran","receive %d data\n",btrpkt->nodeid);
+                if(TOS_NODE_ID==0)
+                {
+                    btrpkt->data2=call LocalTime.get();
+                    dbg("endtoend", "%d %d %d  \n",btrpkt->nodeid ,btrpkt->level,btrpkt->data2-btrpkt->data1);
+                }
+                else{ 
+                    if(call SendQueue.enqueue(btrpkt)){
+                        dbg("tran","store %d data",btrpkt->nodeid);
+                    }
+                    //if(TOS_NODE_ID > 3)
+                    //dbg("senddelay", "receive data from %d\n",btrpkt->nodeid);
+                }
                 atomic{
                     sendflag=4;
                     dest = btrpkt->dest;
-                    dbg("ack","send ack to %d\n",btrpkt->dest);
+                    dbg("tran","send ack to %d\n",btrpkt->dest);
                     SendMessage();//»Øack
-                }
-                if(TOS_NODE_ID==0)
-                {
-                    //dbg("senddelay", "root get message\n");
-                }
-                else{ 
-                    call SendQueue.enqueue(btrpkt);
-                    //if(TOS_NODE_ID > 3)
-                    //dbg("senddelay", "receive data from %d\n",btrpkt->nodeid);
                 }
             }
             if(btrpkt->datatype == 5){
