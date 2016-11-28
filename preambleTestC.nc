@@ -87,6 +87,7 @@ implementation {
 
     event void Boot.booted() {
         int i;
+        flag1=1;
         for(i=0;i<100;i++)
             t3[i]=0;
         level = 65535;
@@ -214,9 +215,9 @@ implementation {
         }
         if(sendflag == 3 ){
             if(! (call SendQueue.empty())){
-                btrpkt = call SendQueue.head();
-                dbg("tran","send tran %d    %d    %d \n",btrpkt->nodeid,btrpkt->dest,btrpkt->data1);
-                /*btrpkt->nodeid   = msgpkt->nodeid;
+                  Message* msgpkt = call SendQueue.head();
+                dbg("tran","send tran %d    %d    %d \n",msgpkt->nodeid,msgpkt->dest,(call SendQueue.size()));
+                  btrpkt->nodeid   = msgpkt->nodeid;
                   btrpkt->dest     = TOS_NODE_ID;
                   btrpkt->datatype = msgpkt->datatype;
                   btrpkt->level    = msgpkt->level;
@@ -224,7 +225,7 @@ implementation {
                   btrpkt->data2    = msgpkt->data2;
                   btrpkt->remain   = msgpkt->remain;
                   btrpkt->etx      = getetx(TOS_NODE_ID);
-                  btrpkt->time     = gettime();*/
+                  btrpkt->time     = gettime();
             }
             else if(sendtask==1){
                 sendtask=0;
@@ -321,6 +322,7 @@ implementation {
             }
             if(sendflag==3)
             {   
+            flag1=1;
                 countpre=0;
                 inittemp();
                 pstate=0;
@@ -427,7 +429,7 @@ implementation {
                 else{ 
                     if(call SendQueue.enqueue(btrpkt) == SUCCESS){
                         Message* testpkt=call SendQueue.head();
-                        dbg("tran","store %d data\n",testpkt->nodeid);
+                        dbg("tran","store %d data  %d    %d \n",testpkt->nodeid,testpkt->dest,(call SendQueue.size()));
                     }
                 }
                 atomic{
