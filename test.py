@@ -18,7 +18,7 @@ def doexpr():
         if (len(s) > 0 and s[0] == "gain"):
             r.add(int(s[1]), int(s[2]), float(s[3]))
     file1 = open("2.txt", "w")
-    t.addChannel("endtoend",file1 )
+    t.addChannel("ack",sys.stdout)
     t.addChannel("tran", sys.stdout)
     noise = open("meyer-short.txt", "r")
     lines = noise.readlines()
