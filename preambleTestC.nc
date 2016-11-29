@@ -17,7 +17,7 @@ module preambleTestC {
     uses interface AMSend;
     uses interface Receive;
     uses interface SplitControl as AMControl;
-    uses interface Queue<Message*> as SendQueue;
+    uses interface Queue<Message> as SendQueue;
     uses interface Random; 
 }
 implementation {
@@ -215,15 +215,14 @@ implementation {
         }
         if(sendflag == 3 ){
             if(! (call SendQueue.empty())){
-                  Message* msgpkt = call SendQueue.head();
-                dbg("tran","send tran %d    %d    %d \n",msgpkt->nodeid,msgpkt->dest,(call SendQueue.size()));
-                  btrpkt->nodeid   = msgpkt->nodeid;
+                  Message msgpkt = call SendQueue.head();
+                  btrpkt->nodeid   = msgpkt.nodeid;
                   btrpkt->dest     = TOS_NODE_ID;
-                  btrpkt->datatype = msgpkt->datatype;
-                  btrpkt->level    = msgpkt->level;
-                  btrpkt->data1    = msgpkt->data1;
-                  btrpkt->data2    = msgpkt->data2;
-                  btrpkt->remain   = msgpkt->remain;
+                  btrpkt->datatype = msgpkt.datatype;
+                  btrpkt->level    = msgpkt.level;
+                  btrpkt->data1    = msgpkt.data1;
+                  btrpkt->data2    = msgpkt.data2;
+                  btrpkt->remain   = msgpkt.remain;
                   btrpkt->etx      = getetx(TOS_NODE_ID);
                   btrpkt->time     = gettime();
             }
@@ -314,7 +313,7 @@ implementation {
             if(sendflag==1){
                 counter1++;
                 if (t1==0)
-                    t1=call LocalTime.get();
+                    t1=sim_time()/100000000;
                 call waitforack.startOneShot(500);	
             }
             if(sendflag==2)
@@ -369,8 +368,7 @@ implementation {
                         break;
                     }
                 }
-                t1=0;
-                t2=0;
+                
                 dbg("senddelay", "receive 4 .\n");
             }
             if(btrpkt->datatype == 1){
@@ -423,13 +421,24 @@ implementation {
                 btrpkt->dest=TOS_NODE_ID;
                 if(TOS_NODE_ID==0)
                 {
-                    btrpkt->data2=call LocalTime.get();
-                    dbg("endtoend", "%d %d %d  \n",btrpkt->nodeid ,btrpkt->level,btrpkt->data2-btrpkt->data1);
+                int tend;
+                    tend=sim_time()/10000000;
+                    dbg("endtoend", "%d %d %d %d \n",btrpkt->nodeid ,btrpkt->data2,tend,btrpkt->data1);
                 }
                 else{ 
-                    if(call SendQueue.enqueue(btrpkt) == SUCCESS){
-                        Message* testpkt=call SendQueue.head();
-                        dbg("tran","store %d data  %d    %d \n",testpkt->nodeid,testpkt->dest,(call SendQueue.size()));
+                    Message temp;        
+                    temp.nodeid=btrpkt->nodeid;
+                    temp.dest=btrpkt->dest     ;
+                    temp.datatype=btrpkt->datatype ;
+                    temp.level=btrpkt->level    ;
+                    temp.data1=btrpkt->data1    ;
+                    temp.data2=btrpkt->data2+1    ;
+                    temp.remain=btrpkt->remain   ;
+                    temp.etx=btrpkt->etx      ;
+                    temp.time=btrpkt->time    ;
+                    if(call SendQueue.enqueue(temp) == SUCCESS){
+                       // Message testpkt=call SendQueue.head();
+                       // dbg("tran","store %d data  %d    %d \n",testpkt.nodeid,testpkt.dest,(call SendQueue.size()));
                     }
                 }
                 atomic{
