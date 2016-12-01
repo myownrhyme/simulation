@@ -88,12 +88,12 @@ implementation {
     event void Boot.booted() {
         int i;
         flag1=1;
-        if(TOS_NODE_ID < 10)
-            sleeptime=12500;
-        else if (TOS_NODE_ID <20)
-           sleeptime=16000;
+        if(TOS_NODE_ID < 20)
+            sleeptime=20000;
+        else if (TOS_NODE_ID <30)
+           sleeptime=12500;
         else
-            sleeptime=100000
+            sleeptime=100000;
         for(i=0;i<100;i++)
             t3[i]=0;
         level = 65535;

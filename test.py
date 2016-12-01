@@ -10,7 +10,7 @@ def doexpr():
     t = Tossim(n.variables.variables())
     m = t.mac();
     r = t.radio();
-    f = open("15-15-tight-mica2-grid.txt", "r")
+    f = open("linkgain.out", "r")
 
     lines = f.readlines()
     for line in lines:
@@ -42,7 +42,7 @@ def doexpr():
 
 
 def calculate():
-    f1=open ("1.txt","a")
+    f1=open ("1.txt","w")
     for i in range(0,225):
         f1.write( str( nodepool[i].getVariable("preambleTestC.level").getData()))
         f1.write("    ")
