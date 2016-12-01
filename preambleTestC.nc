@@ -1,7 +1,6 @@
 #include <Timer.h>
 
 #define roubletablemax 15
-#define updatesleep 5000
 
 module preambleTestC {
     uses interface Boot;
@@ -21,6 +20,7 @@ module preambleTestC {
     uses interface Random; 
 }
 implementation {
+    unsigned long sleeptime;
     int routetable[roubletablemax][2];//Â·ÓÉ±í
     uint16_t dest;
     uint16_t counter1;
@@ -88,6 +88,12 @@ implementation {
     event void Boot.booted() {
         int i;
         flag1=1;
+        if(TOS_NODE_ID < 10)
+            sleeptime=12500;
+        else if (TOS_NODE_ID <20)
+           sleeptime=16000;
+        else
+            sleeptime=100000
         for(i=0;i<100;i++)
             t3[i]=0;
         level = 65535;
@@ -181,7 +187,7 @@ implementation {
             state=0;
             pstate=0;
             awakestate=0;
-            call sleepTimer.startOneShot(150000);	
+            call sleepTimer.startOneShot(sleeptime);	
         }
         else
         {
@@ -312,8 +318,9 @@ implementation {
         if (&pkt == msg) {
             if(sendflag==1){
                 counter1++;
-                if (t1==0)
-                    t1=sim_time()/100000000;
+                if (t1==0){
+                    t1=call LocalTime.get();
+                    }
                 call waitforack.startOneShot(500);	
             }
             if(sendflag==2)
@@ -321,7 +328,8 @@ implementation {
             }
             if(sendflag==3)
             {   
-            flag1=1;
+                t1=0;
+                flag1=1;
                 countpre=0;
                 inittemp();
                 pstate=0;
@@ -406,7 +414,7 @@ implementation {
                             sort();
                             dest=getdest();
                             dbg("ack","send data to %d\n",getdest());
-                            if (flag1==1){
+                            if (flag1==1){//flag1, send data once 
                                 flag1=0;
                                 sendflag=3;
                                 SendMessage();
@@ -418,11 +426,10 @@ implementation {
             }
 
             if(btrpkt->datatype == 3){
-                btrpkt->dest=TOS_NODE_ID;
                 if(TOS_NODE_ID==0)
                 {
                 int tend;
-                    tend=sim_time()/10000000;
+                    tend=call LocalTime.get();
                     dbg("endtoend", "%d %d %d %d \n",btrpkt->nodeid ,btrpkt->data2,tend,btrpkt->data1);
                 }
                 else{ 
@@ -437,8 +444,8 @@ implementation {
                     temp.etx=btrpkt->etx      ;
                     temp.time=btrpkt->time    ;
                     if(call SendQueue.enqueue(temp) == SUCCESS){
-                       // Message testpkt=call SendQueue.head();
-                       // dbg("tran","store %d data  %d    %d \n",testpkt.nodeid,testpkt.dest,(call SendQueue.size()));
+                        Message testpkt=call SendQueue.head();
+                        dbg("tran","store %d data  %d    %d \n",testpkt.nodeid,testpkt.dest,(call SendQueue.size()));
                     }
                 }
                 atomic{

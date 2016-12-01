@@ -17,7 +17,7 @@ typedef nx_struct Message
 /*	nx_uint16_t data3;
     nx_uint16_t data4;
     nx_uint16_t data5;*/
-	nx_uint16_t data1;
+	nx_uint32_t data1;
 	nx_uint16_t data2;
 	nx_uint16_t etx;
 	nx_uint8_t remain;
